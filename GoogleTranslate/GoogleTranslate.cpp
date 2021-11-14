@@ -14,26 +14,9 @@ using namespace std;
 
 int main()
 {
-	/*
-	map<string, int> dict;
-	dict.insert(make_pair("aaa", 9));
-	dict.insert(make_pair("aba", 9));
-	dict.insert(make_pair("aab", 9));
-	dict.insert(make_pair("bbaa", 9));
-	for (auto&& x : dict)
-	{
-		cout << x.first << " : " << x.second;
-	}
-
-	auto it = dict.find("aaa");
-	if (it != dict.end())
-	{
-	
-	}
-	*/
 	Dictionary dict;
+	//ifstream str;
 	RequestProcessor processor(cin,dict);
+	//RequestProcessor processor(str, dict);
 	processor.ProcessStream();
-
-
 }
