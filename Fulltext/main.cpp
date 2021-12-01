@@ -5,12 +5,13 @@
 using namespace std;
 int main(int argc, char** argv)
 {
-    if(argc > 3 || argc < 2)
-    {
-        cout << "Arguments error" << endl;
-        return 0;
-    }
-
+    /**/
+	if(argc > 3 || argc < 2)
+	{
+	    cout << "Arguments error" << endl;
+	    return 0;
+	}
+	/**/
     ifstream articles;
     ifstream queries;
     try
@@ -21,11 +22,11 @@ int main(int argc, char** argv)
             queries.open(argv[2]);
         }
     }
-    catch(exception)
+    catch (exception)
     {
         return 0; //program cannot continue
     }
-    
+
     ArticleProcessor processor;
 
     while (articles.peek() != '\n')
@@ -34,7 +35,7 @@ int main(int argc, char** argv)
     }
     processor.ProcessArticles();
     //processor.ProcessQueries(cin);
-    if(argc == 3)
+    if (argc == 3)
     {
         processor.ProcessQueries(queries);
     }
@@ -42,6 +43,6 @@ int main(int argc, char** argv)
     {
         processor.ProcessQueries(cin);
     }
-	//processor.PrintArticle();
+    //processor.PrintArticle();
     return 0;
 }

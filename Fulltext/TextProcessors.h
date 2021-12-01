@@ -34,6 +34,7 @@ public:
     void PrintQuery(const std::vector<WordRecord::const_iterator>& iterators);
     void PrintArticle();
     void ProcessArticles();
+    void ParseLine(std::istream& stream, std::vector<std::string>& words);
 private:
     std::vector<Article> Articles;
 	ReverseIndex revIndices; //each word has asociated vector of article number and first occurence

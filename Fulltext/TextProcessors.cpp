@@ -18,6 +18,50 @@ void ArticleProcessor::ProcessArticles()
         ProcessArticle(i);
     }
 }
+void ArticleProcessor::ParseLine(std::istream& stream, std::vector<std::string>& words)
+{
+    string word;
+    bool inWord = false;
+    while (true)
+    {
+        int character = stream.get();
+        char c = (char)character;
+        if (character == -1 || c == '\n')
+        {
+            if (!word.empty())
+            {
+                for (int i = 0; i < word.size();++i)
+                {
+                    word[i] = std::tolower(word[i]);
+                }
+                words.push_back(word);
+            }
+            break;
+        }
+        if (!isalpha(c))
+        {
+            if (inWord) //check index add if necessary
+            {
+
+                for (int i = 0; i < word.size();++i)
+                {
+                    word[i] = std::tolower(word[i]);
+                }
+                words.push_back(word); //omits current char as we want
+            }
+            inWord = false;
+            word = "";
+        }
+        else
+        {
+            if (!inWord) //just at start of word
+            {
+                inWord = true;
+            }
+            word += c;
+        }
+    }
+}
 void ArticleProcessor::ParseArticle(std::istream &stream)
 {
     Articles.push_back(Article());
@@ -31,57 +75,23 @@ void ArticleProcessor::ProcessQueries(std::istream& stream)
 {
 	while (true)
 	{
-        string query;
-        bool inWord = false;
-        size_t wordStart = 0;
-        getline(stream, query);
+        
         if(!stream.good()) //
         {
 	        return;
         }
-        if(query.empty())
-        {
-	        continue;
-        }
+        char first = (char)stream.peek();
+        bool empty = first == '\n' || stream.peek() == -1;
+        
         vector<string> words;
-        size_t head = 0;
-        size_t length = query.length();
-        while (head < length)
+        ParseLine(stream, words);
+        if (words.empty())
         {
-            char c = query[head];
-
-            if (!isalpha(c))
+            if(!empty)
             {
-                if (inWord) //check index add if necessary
-                {
-                    string word = query.substr(wordStart, head - wordStart);
-                    for (int i = 0; i < word.size();++i)
-                    {
-                        word[i] = std::tolower(word[i]);
-                    }
-                    words.push_back(word); //omits current char as we want
-                }
-                inWord = false;
+                cout << "No results" << endl << endl;
             }
-            else
-            {
-                if (!inWord) //just at start of word
-                {
-                    inWord = true;
-                    wordStart = head;
-                }
-            }
-            ++head;
-        }
-        if(inWord)
-        {
-            string word = query.substr(wordStart, head - wordStart);
-            for (int i = 0; i < word.size();++i)
-            {
-                word[i] = std::tolower(word[i]);
-            }
-            words.push_back(word);
-            //string ends with word so we dont detect end in loop
+            continue;
         }
         vector<WordRecord> records;
         bool nonexistent = false;
@@ -194,7 +204,7 @@ void ArticleProcessor::PrintQuery(const std::vector<WordRecord::const_iterator>&
     {
         //string toWrite = Articles[iterators[minIndex]->first].Text.substr(iterators[minIndex]->second, length - iterators[minIndex]->second);
         cout << '[' << Articles[iterators[0]->first].ID << "] " << Articles[iterators[0]->first].Name << endl;
-        cout << Articles[iterators[0]->first].Text.substr(minIndex, length - iterators[minIndex]->second) << "..." << endl;
+        cout << Articles[iterators[0]->first].Text.substr(minIndex, length - minIndex) << "..." << endl;
     }
 }
 
