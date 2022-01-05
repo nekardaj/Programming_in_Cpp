@@ -3,6 +3,7 @@
 #include <sstream>
 #include <stack>
 #include <vector>
+#include <exception>
 using namespace std;
 void OperatorNode::DeriveSelf(const OperatorNode* copy)
 {
@@ -39,7 +40,7 @@ void OperatorNode::DeriveSelf(const OperatorNode* copy)
 	}
 	default:
 	{
-		throw std::exception("Unknown operator");
+		throw std::exception(); //"Unknown operator"
 	}
 	}
 }
@@ -109,7 +110,7 @@ NodePtr OperatorNode::SimplifySelf()
 		}
 		default:
 		{
-			throw exception("unknown operator");
+			throw exception(); //"Unknown operator"
 		}
 	}
 
@@ -135,7 +136,7 @@ NodePtr OperatorNode::SimplifySelf()
 		}
 		default:
 		{
-			throw exception("unknown operator");
+			throw exception(); //"Unknown operator"
 		}
 		}
 	}
@@ -146,6 +147,7 @@ NodePtr ParseInfix(std::istream& stream)
 {
 	stack<OperatorPtr> operators_st;
 	vector<NodePtr> postfix;
+	bool number = false; //true if next token should be number, gets flipped so starts false
 	while (true)
 	{
 		string expr;
@@ -154,11 +156,12 @@ NodePtr ParseInfix(std::istream& stream)
 		{
 			break;
 		}
-		stack<NodePtr> prefix; //RPN pushed into stack -> prefix
+		number ^= true;
 		if(expr.length() == 1)
 		{
 			if(IsOperator(expr[0]))
 			{
+				if (number) { throw exception(); } //Invalid token order
 				// ( is handeled separately
 				while (!operators_st.empty() && operators_st.top()->_operator != '(' && CompareOperators(operators_st.top()->_operator, expr[0]))
 				{
@@ -171,11 +174,15 @@ NodePtr ParseInfix(std::istream& stream)
 			}
 			if (expr[0] == '(')
 			{
+				if (!number) { throw exception(); } //Invalid token order
+				number = false; //flips to true next loop
 				operators_st.push(make_unique<OperatorNode>(nullptr, nullptr, expr[0]));
 				continue;
 			}
 			if (expr[0] == ')')
 			{
+				if (number) { throw exception(); } //Invalid token order
+				number = true; //next loops flips it to false
 				bool closed = false;
 				while (!operators_st.empty()) //push operators until ( is reached
 				{
@@ -192,10 +199,11 @@ NodePtr ParseInfix(std::istream& stream)
 				{
 					continue;
 				}
-				throw exception("Unpaired parenthesis");
+				throw exception(); //Unpaired parenthesis
 			}
 			if(IsVariable(expr[0]))
 			{
+				if (!number) { throw exception(); } //Invalid token order
 				postfix.push_back(make_unique<ValueNode>(1.0, 'x'));
 				continue;
 			}
@@ -203,10 +211,11 @@ NodePtr ParseInfix(std::istream& stream)
 		double num;
 		if(TryParse(expr,num)) //no wspace ensured by stream
 		{
+			if (!number) { throw exception(); } //Invalid token order
 			postfix.push_back(make_unique<ValueNode>(num, '\0'));
 			continue;
 		}
-		throw exception("Unknown token");
+		throw exception(); //Unknown token
 	}
 	while (!operators_st.empty())
 	{
@@ -226,6 +235,10 @@ NodePtr ParseInfix(std::istream& stream)
 			}
 			temp = move(node);
 			continue;
+		}
+		if (node->GetVariable() == '(')
+		{
+			throw exception(); //Unpaired parenthesis
 		}
 		if(!st.empty() && temp != nullptr)
 		{
@@ -248,7 +261,7 @@ NodePtr ParseInfix(std::istream& stream)
 	if(st.size() != 1)
 	{
 		//incorrect expression
-		throw exception("Invalid expression");
+		throw exception(); //Invalid expression
 	}
 	return std::move(st.top());
 }

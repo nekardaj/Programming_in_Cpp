@@ -6,10 +6,7 @@ using namespace std;
 
 int main()
 {
-	cout << "Hello there" << endl;
-
-	ifstream str;
-	str.open(R"(C:\Users\Honza\Desktop\ukoly\C++_husak\nekardaj\Derivatives\out\build\x64-Debug\test.in.txt)" );
+	istream& str = cin;
 	std::string s;
 	while (true)
 	{
@@ -23,13 +20,12 @@ int main()
 			cout << endl;
 			continue;
 		}
-		cout << s << endl;
 		stringstream sstr(s);
 		try
 		{
 			NodePtr root = ParseInfix(sstr);
-			root->Print();
-			cout << endl;
+			//root->Print();
+			//cout << endl;
 			auto copy = root->Clone();
 			root->DeriveSelf(copy->SelfToOperator());
 			NodePtr newRoot = root->SimplifySelf();
@@ -42,7 +38,7 @@ int main()
 		}
 		catch (exception& e)
 		{
-			cout << e.what();
+			//cout << e.what();
 			cout << "Input error" << endl;
 		}
 	}

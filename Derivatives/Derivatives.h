@@ -3,6 +3,7 @@
 #include <memory>
 #include <iostream>
 #include <istream>
+#include <exception>
 
 
 class Node;
@@ -111,7 +112,7 @@ public:
 	}
 	void SetChildren(NodePtr left, NodePtr right) override
 	{
-		throw std::exception("Unsupported operation");
+		throw std::exception(); //Unsupported operation
 	}
 	void DeriveSelf(const OperatorNode* copy) override //does not use copy so we dont care that it is null
 	{
@@ -155,22 +156,10 @@ public:
 	char Variable; //if node represents varible is not x00 and holds name
 };
 
-//ADD is variable name func to check - modifiable
 bool IsOperator(char c);
 bool IsVariable(char c);
 bool TryParse(std::string str, double& num);
 bool CompareOperators(char c1, char c2);
-
-class DeriveAdd
-{
-public:
-	NodePtr operator()(NodePtr left, NodePtr right)
-	{
-		//return nullptr;
-		NodePtr root = std::make_unique<OperatorNode>(nullptr,nullptr,'+' );
-
-	}
-};
 
 NodePtr ParseInfix(std::istream& stream);
 
