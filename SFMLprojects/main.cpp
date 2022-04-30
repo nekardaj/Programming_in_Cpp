@@ -1,16 +1,15 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 #include "GameLogic.h"
+#include <filesystem>
 int main()
 {
-    sf::RenderWindow window(sf::VideoMode(1280, 800), "SFML project");
-    sf::Texture testTexture;
+    const int width = 1280;
+    const int height = 800;
+    sf::RenderWindow window(sf::VideoMode(width, height), "SFML project");
     
-    if (!testTexture.loadFromFile("C:\\Users\\Honza\\Desktop\\ukoly\\C++_husak\\nekardaj\\SFMLprojects\\Assets\\city_game_tileset\\ground_tile_porous2.png"))
-    {
-        //error
-    }
-    sf::Sprite sprite;
+    InitializePlayerData();
+    InitializeBaseTile();
     std::string credits = "Block assets from: Ajay Karat | Devil's Work.shop\nhttp://devilswork.shop/";
     //to use isometry we count all as if it was in in xy grid and then rotate by matrix
     /*/
@@ -20,19 +19,112 @@ int main()
     image.loadFromFile(filename);
     texture.loadFromImage(image, area);
     */
-    sprite.setTexture(testTexture);
+
+	//TODO use SetOrigin to rotate things easily(doesnt break centring), then use lib function
+    
     //sprite.setTextureRect(sf::IntRect(0, 0, 64, 64));
-    sprite.setScale(sf::Vector2f(0.5f,0.5f));
+    GameData::levelData->Sprites.push_back(std::make_unique<Player>());
+    GameData::levelData->Sprites[0]->SetLocation(3, 3);
+    auto& map = GameData::levelData->map; //we need to acces map inside mainloop on every frame so we cache it
+    sf::Font font;
+    if(!font.loadFromFile(std::filesystem::absolute(std::filesystem::relative("..\\Assets\\")).string() + "\\corbel.ttf"))
+    {
+        throw std::exception("Font missing");
+    }
     while (window.isOpen())
     {
-        sf::Event event;
+        //take care of events such as player input, act if needed
+    	sf::Event event;
+        if(GameData::state == GameState::Lost || GameData::state == GameState::Won)
+        {
+            window.clear(sf::Color::Black);
+            sf::Text text = sf::Text(sf::String((GameData::state == GameState::Lost ? "You lost\n" : "You won\n") + credits), font, 20);
+            text.setPosition(20, 20);
+            window.draw(text);
+            while (window.pollEvent(event))
+            {
+                if (event.type == sf::Event::Closed)
+                    window.close();
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+                {
+                    window.close();
+                }
+                if (event.type == sf::Event::Resized)
+                {
+                    // update the view to the new size of the window
+                    sf::FloatRect visibleArea(0, 0, event.size.width, event.size.height);
+                    window.setView(sf::View(visibleArea));
+                }
+            }
+            window.display();
+	        continue;
+        }
         while (window.pollEvent(event))
         {
             if (event.type == sf::Event::Closed)
                 window.close();
+            if (event.type == sf::Event::Resized) //makes resize not squeeze stuff but show more/less
+            {
+                // update the view to the new size of the window
+                sf::FloatRect visibleArea(0, 0, event.size.width, event.size.height);
+                window.setView(sf::View(visibleArea));
+            }
+            if(event.type == sf::Event::KeyPressed)
+            {
+	            if(sf::Keyboard::isKeyPressed(sf::Keyboard::W))
+	            {
+                    GameData::levelData->Sprites[0]->SetDirection(Direction(0,1));
+                    GameData::levelData->Sprites[0]->MakeMove();
+	            }
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
+                {
+                    GameData::levelData->Sprites[0]->SetDirection(Direction(0, -1));
+                    GameData::levelData->Sprites[0]->MakeMove();
+                }
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
+                {
+                    GameData::levelData->Sprites[0]->SetDirection(Direction(-1, 0));
+                    GameData::levelData->Sprites[0]->MakeMove();
+                }
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+                {
+                    GameData::levelData->Sprites[0]->SetDirection(Direction(1, 0));
+                    GameData::levelData->Sprites[0]->MakeMove();
+                }
+                if(sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+                {
+                    window.close();
+                }
+            }
         }
-        window.clear();
-        window.draw(sprite);
+        //If it is not players turn take care of enemy movement, if animations are implemented procces them instead if they are playing atm
+
+        //process game logic, check win/loss
+
+    	//GameData::levelData->Sprites
+
+        //Draw the scene
+    	window.clear(sf::Color::Transparent);
+        /**/
+    	for (int i = 0; i < GameData::levelData->sizeY; i++)
+        {
+            for (int j = 0; j < GameData::levelData->sizeX; j++)
+            {
+                map[j][i]->Render(window);
+                //window.display(); //Debug only
+            }
+        }
+        GameData::levelData->Sprites[0]->Render(window);
+        BaseTile::DrawGrid(); //takes care if the gridlines
+        //GameData::levelData->Sprites[0]->MakeMove();
+        /**/
+        //map[2][2]->Render(window);
+        
+        //window.draw(BaseTile::GroundSprite);
+        
+        //window.draw(BaseTile::GroundSprite);
+        //render spites
+
     	window.display();
     }
 
