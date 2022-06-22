@@ -254,6 +254,11 @@ public:
 class Player : public BaseSprite
 {
 public:
+	Player(int x, int y)
+	{
+		X = x;
+		Y = y;
+	}
 	static sf::Sprite PlayerSprite;
 	static sf::Texture PlayerTexture;
 	void Die() override //end the game
@@ -280,38 +285,79 @@ public:
 };
 
 class Enemy : public BaseSprite
+//Chases player who loses on contact with this, Unlike player can move to ALL neighbouring tiles(sharing vertex is enough)
 {
 protected:
 	virtual void TurnToPlayer(const BaseSprite* player); //TODO solve how to fetch player pos(GameData::levelData->Sprites[0]->GetX() seems to complicated)
 	
 public:
-	bool MakeMove() override
+	Enemy(int x, int y)
 	{
-		//TurnToPlayer(); //we need to change orientation and then do the same thing as defined in BaseSprite so we call base method
-		BaseSprite::MakeMove();
+		X = x;
+		Y = y;
+	}
+	static sf::Sprite EnemySprite;
+	static sf::Texture EnemyTexture;
+	void Die() override //end the game
+	{
+		GameData::state = GameState::Lost;
 	}
 	void Render(sf::RenderWindow& window) override
 	{
-		
+		EnemySprite.setPosition(BaseTile::shiftX + (X - Y) * (BaseTile::sizeX / 2.0f), (BaseTile::sizeY / 2.0f) * (X + Y - 2) + BaseTile::shiftY);
+
+
+		window.draw(EnemySprite);
+	}
+	bool MakeMove() override
+	{
+		//TurnToPlayer(); //we need to change orientation and then do the same thing as defined in BaseSprite so we call base method
+		return BaseSprite::MakeMove();
 	}
 };
 
 static inline void InitializePlayerData()
 {
 	auto path = absolute(std::filesystem::relative(BaseSprite::relativePath));
-	if (!Player::PlayerTexture.loadFromFile(path.string() + "\\blocks_11.png"))
+	if (!Player::PlayerTexture.loadFromFile(path.string() + "\\blocks_11.png")
+		|| !Enemy::EnemyTexture.loadFromFile(path.string() + "\\blocks_20.png"))
 	{
 		throw std::exception("Cant load file");
 	}
-	sf::Sprite sprite;
-	sprite.setTexture(Player::PlayerTexture);
-	//sprite.setOrigin(BaseTile::midTileX, BaseTile::midTileY);
-	//sf::IntRect rect(110, 640, 164 , 164); //gets 164x164 square
-	//sprite.setTextureRect(rect); //cut only the part we want
-	//sprite.setScale(0.3902439, 0.3902439); //ration of 64/164
-	sprite.setScale(2, 2);
-	Player::PlayerSprite = sprite;
+	sf::Sprite playerSprite;
+	sf::Sprite enemySprite;
+	playerSprite.setTexture(Player::PlayerTexture);
+	enemySprite.setTexture(Enemy::EnemyTexture);
+	playerSprite.setScale(2, 2);
+	enemySprite.setScale(2, 2);
+	Player::PlayerSprite = playerSprite;
+	Enemy::EnemySprite = enemySprite;
 }
+
+class Wall : public BaseTile
+{
+public:
+	void Render(sf::RenderWindow& window) override
+	{
+		Sprite_.setPosition(shiftX + (X - Y) * (sizeX / 2.0f), (sizeY / 2.0f) * (X + Y) + shiftY); //shift makes sure the sprite doesnt sit right on edge
+		//int division y/2 is intended - half move happens in odd number Y/2 stays same
+		window.draw(Sprite_);
+	}
+	static sf::Texture Texture_;
+	static sf::Sprite Sprite_;
+	Wall(int x, int y) : BaseTile(x, y)
+	{
+
+	}
+	void SetTexture(const sf::Texture& texture) override
+	{
+		Texture_ = texture;
+	}
+	void SpriteEntered(BaseSprite* sprite) override //game should not allow this
+	{
+		throw std::exception("Sprite got inside a wall");
+	}
+};
 
 class GoalTile : public BaseTile
 {

@@ -23,7 +23,7 @@ int main()
 	//TODO use SetOrigin to rotate things easily(doesnt break centring), then use lib function
     
     //sprite.setTextureRect(sf::IntRect(0, 0, 64, 64));
-    GameData::levelData->Sprites.push_back(std::make_unique<Player>());
+    GameData::levelData->Sprites.push_back(std::make_unique<Player>(3,3));
     GameData::levelData->Sprites[0]->SetLocation(3, 3);
     auto& map = GameData::levelData->map; //we need to acces map inside mainloop on every frame so we cache it
     sf::Font font;
@@ -71,6 +71,7 @@ int main()
             }
             if(event.type == sf::Event::KeyPressed)
             {
+                //TODO if walls are added ignore if player tries to run into them
 	            if(sf::Keyboard::isKeyPressed(sf::Keyboard::W))
 	            {
                     GameData::levelData->Sprites[0]->SetDirection(Direction(0,1));

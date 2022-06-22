@@ -1,44 +1,17 @@
 #include "GameLogic.h"
 
 #include <fstream>
+#include <sstream>
 #include <filesystem>
 
 void Enemy::TurnToPlayer(const BaseSprite* player)
 {
-	{
-		int difX = player->GetX() - X;
-		int difY = player->GetY() - Y;
-		if (difX > 0 && difY > 0)
-		{
-			if (difX > difY)
-			{
-				Direction_ = std::make_pair(1, 0);
-			}
-			else
-			{
-				Direction_ = std::make_pair(0, 1);
-			}
-			return;
-		}
-		if (difX < 0 && difY < 0)
-		{
-			if (difX < difY)
-			{
-				Direction_ = std::make_pair(1, 0);
-			}
-			else
-			{
-				Direction_ = std::make_pair(0, 1);
-			}
-			return;
-		}
-		//one dif is positive and one negative
-		int flip = difY > 0 ? -1 : 1;
-		if(difX > difY)
-		{
-			
-		}
-	}
+	//If enemy could move only on tiles with shared edge it wouldnt be deterministic(or sensible)
+	//Decreases distance as much as possible(manhattan metric)
+	int diffX = player->GetX() - X;
+	int diffY = player->GetY() - Y;
+	//if one is bigger than other the bigger is >0 - use sign to get direction
+	Direction_ = std::make_pair((diffX > 0) - (diffX < 0), (diffY > 0) - (diffY < 0));
 }
 sf::Sprite BaseTile::GroundSprite = sf::Sprite();
 std::unique_ptr<LevelData> GameData::levelData = std::make_unique<LevelData>("phony.lvl");
@@ -55,6 +28,10 @@ sf::Sprite Teleporter::Sprite_ = sf::Sprite();
 sf::Texture Teleporter::Texture_ = sf::Texture();
 sf::Sprite GoalTile::Sprite_ = sf::Sprite();
 sf::Texture GoalTile::Texture_ = sf::Texture();
+sf::Sprite Wall::Sprite_ = sf::Sprite();
+sf::Texture Wall::Texture_ = sf::Texture();
+sf::Sprite Enemy::EnemySprite = sf::Sprite();
+sf::Texture Enemy::EnemyTexture = sf::Texture();
 
 LevelData::LevelData(const std::string& mapFilename)
 {
@@ -89,9 +66,39 @@ bool LevelData::LoadMap(const std::string& filename)
 	}
 	std::ifstream file(filename);
 	std::string line;
-	int teleporterX = -1;
-	int teleporterY = -1;
-	for(int i = sizeY - 1;i>=0;--i)
+	std::getline(file, line);
+
+	
+	while (line != "#") //end of teleporters(special) section
+	{
+		std::stringstream s(line);
+		std::string str;
+		s >> str;
+		if (str != "tel_pair") { return false; } //check for token(currently just teleporter is special so we dont need branching)
+		if(s.bad())
+		{
+			return false;
+		}
+		int coords[4];
+		coords[3] = -1;
+		for (int i = 0; i < 4 && !s.bad();i++)
+		{
+			s >> coords[i];
+		}
+		if(coords[3] == -1)
+		{
+			return false;
+		}
+		map[coords[0]][coords[1]] = std::make_unique<Teleporter>(coords[2], coords[3], coords[0], coords[1]); //target xy and location xy
+		map[coords[2]][coords[3]] = std::make_unique<Teleporter>(coords[0], coords[1], coords[2], coords[3]);
+		std::getline(file, line);
+		if (file.bad())
+		{
+			return false;
+		}
+	}
+
+	for(int i = sizeY - 1;i>=0;--i) //correct y coord
 	{
 		std::getline(file,line);
 		if(file.bad())
@@ -100,41 +107,45 @@ bool LevelData::LoadMap(const std::string& filename)
 		}
 		for (int j = 0; j < line.length() && j < sizeX;++j)
 		{
-			std::vector<std::pair<int, int>> teleporters(maxTeleporters, std::make_pair(-1,-1));
-			if(islower( line[j])) //lowercase will be teleporter
-			{
-				if(teleporters[line[j] - 't'].first == -1)
-				{
-					teleporters[line[j] - 't'] = std::make_pair(j, i);
-				}
-				
-			}
 			switch (line[j])
 			{
-			case 'N': //normal tile
+				case 'F': //freezing tile
 				{
+					map[j][i] = std::make_unique<FreezingTile>(j, i);
 					break;
 				}
-			case 'F': //freezing tile
-			{
-				break;
+				case 'B': //breakable tile
+				{
+					map[j][i] = std::make_unique<DestructibleTile>(j, i);
+					break;
+				}
+				case 'P': //player on a (normal) tile
+				{
+					map[j][i] = std::make_unique<BaseTile>(j, i);
+					Sprites.insert(Sprites.begin(), std::make_unique<Player>(j, i));//we want player to be at start of list
+					break;
+				}
+				case 'E': //enemy on a (normal) tile
+				{
+					map[j][i] = std::make_unique<BaseTile>(j, i);
+					Sprites.push_back(std::make_unique<Enemy>(j,i));
+					break;
+				}
+				case 'G': //target
+				{
+					map[j][i] = std::make_unique<GoalTile>(j, i);
+					break;
+				}
+				case 'W': //wall
+				{
+					map[j][i] = std::make_unique<Wall>(j, i);
+				}
+				default: //there is a letter and it is no special tile - normal tile
+				{
+					map[j][i] = std::make_unique<BaseTile>(j, i);
+				}
 			}
-			case 't':
-			case 'u':
-			case 'v':
-			case 'w':
-			{
-				break;
-			}
-			case 'B': //breakable tile
-			{
-				break;
-			}
-			case 'f':
-			{
-				break;
-			}
-			}
+			//Teleporter is handled separately as we need to pair them(or at least know location and I suppose this leaves more freedom)
 		}
 	}
 
