@@ -10,7 +10,8 @@ void Enemy::TurnToPlayer(const BaseSprite* player)
 	//Decreases distance as much as possible(manhattan metric)
 	int diffX = player->GetX() - X;
 	int diffY = player->GetY() - Y;
-	//if one is bigger than other the bigger is >0 - use sign to get direction
+	//get sign of diff to determine direction
+	//TODO if wall are added check for walls and if there is one, resolve
 	Direction_ = std::make_pair((diffX > 0) - (diffX < 0), (diffY > 0) - (diffY < 0));
 }
 sf::Sprite BaseTile::GroundSprite = sf::Sprite();
@@ -32,6 +33,8 @@ sf::Sprite Wall::Sprite_ = sf::Sprite();
 sf::Texture Wall::Texture_ = sf::Texture();
 sf::Sprite Enemy::EnemySprite = sf::Sprite();
 sf::Texture Enemy::EnemyTexture = sf::Texture();
+
+Player* GameData::player = new Player(0, 0);
 
 LevelData::LevelData(const std::string& mapFilename)
 {
@@ -56,6 +59,16 @@ LevelData::LevelData(const std::string& mapFilename)
 		map[10][5] = std::make_unique<GoalTile>(10,5);
 	}
 }
+/// <summary>
+/// Resets player status and set location to passed arguments
+/// </summary>
+/// <param name="X">x coord</param>
+/// <param name="Y">y coord</param>
+void GameData::ResetPlayer(int X, int Y)
+{
+	player->Reset(X,Y);
+}
+
 
 bool LevelData::LoadMap(const std::string& filename)
 {

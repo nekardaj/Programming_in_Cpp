@@ -23,8 +23,10 @@ int main()
 	//TODO use SetOrigin to rotate things easily(doesnt break centring), then use lib function
     
     //sprite.setTextureRect(sf::IntRect(0, 0, 64, 64));
-    GameData::levelData->Sprites.push_back(std::make_unique<Player>(3,3));
-    GameData::levelData->Sprites[0]->SetLocation(3, 3);
+    GameData::ResetPlayer(3, 3);
+    GameData::levelData->Sprites.push_back(std::make_unique<Enemy>(7,8));
+
+
     auto& map = GameData::levelData->map; //we need to acces map inside mainloop on every frame so we cache it
     sf::Font font;
     if(!font.loadFromFile(std::filesystem::absolute(std::filesystem::relative("..\\Assets\\")).string() + "\\corbel.ttf"))
@@ -71,27 +73,9 @@ int main()
             }
             if(event.type == sf::Event::KeyPressed)
             {
-                //TODO if walls are added ignore if player tries to run into them
-	            if(sf::Keyboard::isKeyPressed(sf::Keyboard::W))
-	            {
-                    GameData::levelData->Sprites[0]->SetDirection(Direction(0,1));
-                    GameData::levelData->Sprites[0]->MakeMove();
-	            }
-                if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
-                {
-                    GameData::levelData->Sprites[0]->SetDirection(Direction(0, -1));
-                    GameData::levelData->Sprites[0]->MakeMove();
-                }
-                if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
-                {
-                    GameData::levelData->Sprites[0]->SetDirection(Direction(-1, 0));
-                    GameData::levelData->Sprites[0]->MakeMove();
-                }
-                if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
-                {
-                    GameData::levelData->Sprites[0]->SetDirection(Direction(1, 0));
-                    GameData::levelData->Sprites[0]->MakeMove();
-                }
+                const_cast<Player*>(GameData::GetPlayer())->ProcessInput();
+                //We use const cast however all logic is done inside player - ensures validity
+	            
                 if(sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
                 {
                     window.close();
@@ -99,11 +83,15 @@ int main()
             }
         }
         //If it is not players turn take care of enemy movement, if animations are implemented procces them instead if they are playing atm
-
-        //process game logic, check win/loss
-
-    	//GameData::levelData->Sprites
-
+        if(!GameData::PlayerTurn) //add delay/anim?
+        {
+	        for (auto&& item : GameData::levelData->Sprites)
+	        {
+                item->MakeMove();
+	        }
+            GameData::PlayerTurn = true;
+        }
+        
         //Draw the scene
     	window.clear(sf::Color::Transparent);
         /**/
@@ -115,9 +103,14 @@ int main()
                 //window.display(); //Debug only
             }
         }
-        GameData::levelData->Sprites[0]->Render(window);
-        BaseTile::DrawGrid(); //takes care if the gridlines
-        //GameData::levelData->Sprites[0]->MakeMove();
+        for (auto&& item : GameData::levelData->Sprites)
+        {
+            item->Render(window);
+        }
+        //GameData::GetPlayer()->Render(window);
+        GameData::GetPlayer()->Render(window);
+    	BaseTile::DrawGrid(); //takes care if the gridlines
+        //GameData::GetPlayer()->MakeMove();
         /**/
         //map[2][2]->Render(window);
         

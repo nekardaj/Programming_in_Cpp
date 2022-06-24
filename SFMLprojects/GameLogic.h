@@ -18,6 +18,7 @@ class DestructibleTile;
 class FreezingTile;
 class BaseTile;
 class BaseSprite;
+class Player;
 using spritePtr = std::unique_ptr<BaseSprite>;
 using tilePtr = std::unique_ptr<BaseTile>;
 class BaseTile
@@ -74,7 +75,7 @@ public:
 	LevelData(const std::string& mapFilename);
 	static constexpr  int sizeX = 12;
 	static constexpr  int sizeY = 12;
-	static constexpr int maxTeleporters = 6;
+	//static constexpr int maxTeleporters = 6;
 	tilePtr map[sizeX][sizeY];
 	/// <summary>
 	/// Players should always be at pos 0 he will always die last so we dont move whole vector
@@ -96,6 +97,16 @@ public:
 	static std::string Levels[];
 	static std::unique_ptr<LevelData> levelData;
 	inline static GameState state = GameState::Playing;
+	inline static bool PlayerTurn = true;
+	//This allows everyone to read player data, modifying them should be done inside player class
+	//Noncost usage requires explicit cast - consider effects
+	static const Player* GetPlayer()
+	{
+		return player;
+	}
+	static void ResetPlayer(int X, int Y);
+private:
+	static Player* player;
 };
 /*/
 std::string GameData::Levels[] =
@@ -122,7 +133,7 @@ public:
 	int GetX() const { return X; }
 	int GetY() const { return Y; }
 	virtual void Freeze(int duration) { freeze += duration; }
-	virtual void Render(sf::RenderWindow& window) = 0; //each sprite has to define this alone as it can be composed of more things or depend on state..
+	virtual void Render(sf::RenderWindow& window) const = 0; //each sprite has to define this alone as it can be composed of more things or depend on state..
 	virtual void SetLocation(int x, int y) //if sprite entered needs to be called it is callers responibility
 	{
 		X = x;
@@ -265,7 +276,38 @@ public:
 	{
 		GameData::state = GameState::Lost;
 	}
-	void Render(sf::RenderWindow& window) override
+	void Reset(int x, int y)
+	{
+		freeze = 0;
+		X = x;
+		Y = y;
+	}
+	void ProcessInput()
+	{
+		//TODO if walls are added ignore if player tries to run into them
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
+		{
+			SetDirection(Direction(0, -1)); //because of isometry origin is at the top of screen
+			if (GameData::PlayerTurn && MakeMove()) { GameData::PlayerTurn = false; }
+		}
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
+		{
+			SetDirection(Direction(0, 1));
+			if (GameData::PlayerTurn && MakeMove()) { GameData::PlayerTurn = false; }
+		}
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
+		{
+			SetDirection(Direction(-1, 0));
+			if (GameData::PlayerTurn && MakeMove()) { GameData::PlayerTurn = false; }
+		}
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+		{
+			SetDirection(Direction(1, 0));
+			if (GameData::PlayerTurn && MakeMove()) { GameData::PlayerTurn = false; }
+			//we use lazy eval if it is not players turn move wont be evaluated
+		}
+	}
+	void Render(sf::RenderWindow& window) const override
 	{
 		PlayerSprite.setPosition(BaseTile::shiftX + (X - Y) * (BaseTile::sizeX / 2.0f), (BaseTile::sizeY / 2.0f) * (X + Y - 2) + BaseTile::shiftY);
 		
@@ -300,10 +342,12 @@ public:
 	static sf::Texture EnemyTexture;
 	void Die() override //end the game
 	{
-		GameData::state = GameState::Lost;
+		Alive = false;
 	}
-	void Render(sf::RenderWindow& window) override
+	bool Alive = true;
+	void Render(sf::RenderWindow& window) const override
 	{
+		if (!Alive) { return; }
 		EnemySprite.setPosition(BaseTile::shiftX + (X - Y) * (BaseTile::sizeX / 2.0f), (BaseTile::sizeY / 2.0f) * (X + Y - 2) + BaseTile::shiftY);
 
 
@@ -311,8 +355,14 @@ public:
 	}
 	bool MakeMove() override
 	{
-		//TurnToPlayer(); //we need to change orientation and then do the same thing as defined in BaseSprite so we call base method
-		return BaseSprite::MakeMove();
+		TurnToPlayer(GameData::GetPlayer()); //we need to change orientation and then do the same thing as defined in BaseSprite so we call base method
+		//no need to check for bound we always go towards player which is inside the level
+		bool retval = BaseSprite::MakeMove();
+		if (X == GameData::GetPlayer()->GetX() && Y == GameData::GetPlayer()->GetY())
+		{
+			GameData::state = GameState::Lost;
+		}
+		return retval;
 	}
 };
 
@@ -328,8 +378,8 @@ static inline void InitializePlayerData()
 	sf::Sprite enemySprite;
 	playerSprite.setTexture(Player::PlayerTexture);
 	enemySprite.setTexture(Enemy::EnemyTexture);
-	playerSprite.setScale(2, 2);
-	enemySprite.setScale(2, 2);
+	playerSprite.setScale(BaseTile::MultiplierX, BaseTile::MultiplierY); //sprites should be scaled the same as tiles
+	enemySprite.setScale(BaseTile::MultiplierX, BaseTile::MultiplierY);
 	Player::PlayerSprite = playerSprite;
 	Enemy::EnemySprite = enemySprite;
 }
@@ -398,11 +448,8 @@ static inline void InitializeBaseTile()
 		throw std::exception("Cant load file");
 	}
 	BaseTile::GroundSprite.setTexture(BaseTile::Texture_);
-	//sprite.setOrigin(BaseTile::midTileX, BaseTile::midTileY);
-	//sf::IntRect rect(110, 640, 164 , 164); //gets 164x164 square
-	//sprite.setTextureRect(rect); //cut only the part we want
-	//sprite.setScale(0.3902439, 0.3902439); //ration of 64/164
-	BaseTile::GroundSprite.setScale(2, 2);
+
+	BaseTile::GroundSprite.setScale(BaseTile::MultiplierX, BaseTile::MultiplierY);
 	BaseTile::GroundSprite = BaseTile::GroundSprite;
 	/**/
 
@@ -411,14 +458,14 @@ static inline void InitializeBaseTile()
 		throw std::exception("Cant load file");
 	}
 	FreezingTile::Sprite_.setTexture(FreezingTile::Texture_);
-	FreezingTile::Sprite_.setScale(2, 2);
+	FreezingTile::Sprite_.setScale(BaseTile::MultiplierX, BaseTile::MultiplierY);
 
 	if (!DestructibleTile::Texture_.loadFromFile(path.string() + "\\blocks_28.png"))
 	{
 		throw std::exception("Cant load file");
 	}
 	DestructibleTile::Sprite_.setTexture(DestructibleTile::Texture_);
-	DestructibleTile::Sprite_.setScale(2, 2);
+	DestructibleTile::Sprite_.setScale(BaseTile::MultiplierX, BaseTile::MultiplierY);
 
 	if (!Teleporter::Texture_.loadFromFile(path.string() + "\\blocks_19.png"))
 	{
@@ -426,14 +473,14 @@ static inline void InitializeBaseTile()
 	}
 
 	Teleporter::Sprite_.setTexture(Teleporter::Texture_);
-	Teleporter::Sprite_.setScale(2, 2);
+	Teleporter::Sprite_.setScale(BaseTile::MultiplierX, BaseTile::MultiplierY);
 
 	if (!GoalTile::Texture_.loadFromFile(path.string() + "\\blocks_100.png"))
 	{
 		throw std::exception("Cant load file");
 	}
 	GoalTile::Sprite_.setTexture(GoalTile::Texture_);
-	GoalTile::Sprite_.setScale(2, 2);
+	GoalTile::Sprite_.setScale(BaseTile::MultiplierX, BaseTile::MultiplierY);
 }
 
 #endif
