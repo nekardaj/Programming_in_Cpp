@@ -14,8 +14,10 @@ void Enemy::TurnToPlayer(const BaseSprite* player)
 	//TODO if wall are added check for walls and if there is one, resolve
 	Direction_ = std::make_pair((diffX > 0) - (diffX < 0), (diffY > 0) - (diffY < 0));
 }
+#if 1 //region
 sf::Sprite BaseTile::GroundSprite = sf::Sprite();
-std::unique_ptr<LevelData> GameData::levelData = std::make_unique<LevelData>("phony.lvl");
+
+int GameData::currentLevel = 0;
 std::string BaseTile::relativePath = "..\\Assets\\Blocks\\";
 std::string BaseSprite::relativePath = "..\\Assets\\Blocks\\";
 sf::Texture BaseTile::Texture_ = sf::Texture();
@@ -33,32 +35,34 @@ sf::Sprite Wall::Sprite_ = sf::Sprite();
 sf::Texture Wall::Texture_ = sf::Texture();
 sf::Sprite Enemy::EnemySprite = sf::Sprite();
 sf::Texture Enemy::EnemyTexture = sf::Texture();
+#endif
+
 
 Player* GameData::player = new Player(0, 0);
+std::unique_ptr<LevelData> GameData::levelData = nullptr;
 
 LevelData::LevelData(const std::string& mapFilename)
 {
 	{
-		/*/
-		if(LoadMap(mapFilename))
+		if(!LoadMap(mapFilename))
 		{
 			throw std::exception("Cant load map");
 		}
-		*/
-		for (int i = 0; i < sizeX; ++i)
-		{
-			for (int j = 0; j < sizeY; ++j)
-			{
-				map[i][j] = std::make_unique<BaseTile>(i, j);
-			}
-		}
-		map[3][4] = std::make_unique<FreezingTile>(3,4);
-		map[5][5] = std::make_unique<DestructibleTile>(5, 5);
-		map[7][6] = std::make_unique<Teleporter>(8,9,7,6);
-		map[8][9] = std::make_unique<Teleporter>(7, 6, 8, 9);
-		map[10][5] = std::make_unique<GoalTile>(10,5);
 	}
 }
+void GameData::LoadNextLevel()
+{
+	currentLevel++;
+	levelData = std::make_unique<LevelData>("..\\Assets\\level0" + std::to_string(currentLevel) + ".txt");
+	PlayerTurn = true;
+	//creating new level data resets player to right spot, preincrement makes 0th lvl read level1.txt as intended
+}
+void GameData::RestartLevel()
+{
+	levelData = std::make_unique<LevelData>("..\\Assets\\level0" + std::to_string(currentLevel) + ".txt");
+	PlayerTurn = true;
+}
+
 /// <summary>
 /// Resets player status and set location to passed arguments
 /// </summary>
@@ -72,11 +76,13 @@ void GameData::ResetPlayer(int X, int Y)
 
 bool LevelData::LoadMap(const std::string& filename)
 {
-	const std::filesystem::path path{ filename };
+	//const std::filesystem::path path = std::filesystem::absolute(std::filesystem::relative(filename));
+	/*/
 	if(std::filesystem::exists(path))
 	{
 		return false; //file doesnt exist return false
 	}
+	/**/
 	std::ifstream file(filename);
 	std::string line;
 	std::getline(file, line);
@@ -98,7 +104,7 @@ bool LevelData::LoadMap(const std::string& filename)
 		{
 			s >> coords[i];
 		}
-		if(coords[3] == -1)
+		if(coords[3] == -1) //we didnt read enough coords, failed to load
 		{
 			return false;
 		}
@@ -135,7 +141,7 @@ bool LevelData::LoadMap(const std::string& filename)
 				case 'P': //player on a (normal) tile
 				{
 					map[j][i] = std::make_unique<BaseTile>(j, i);
-					Sprites.insert(Sprites.begin(), std::make_unique<Player>(j, i));//we want player to be at start of list
+					GameData::ResetPlayer(j, i);//we want player to be at start of list
 					break;
 				}
 				case 'E': //enemy on a (normal) tile
@@ -152,6 +158,10 @@ bool LevelData::LoadMap(const std::string& filename)
 				case 'W': //wall
 				{
 					map[j][i] = std::make_unique<Wall>(j, i);
+				}
+				case 'T': //teleporter, it was already created is specials section
+				{
+					break;		
 				}
 				default: //there is a letter and it is no special tile - normal tile
 				{

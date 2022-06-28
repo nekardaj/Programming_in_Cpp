@@ -9,9 +9,8 @@
 #include <SFML/Main.hpp>
 #include <filesystem>
 
-enum class Directions { Up, Down, Left, Right, None };
 
-enum class GameState { Menu, Playing, Lost, Won  };
+enum class GameState { Menu, Playing, Lost, Finished, BetweenLevels, Rules  };
 using Direction = std::pair<int_fast8_t, int_fast8_t>; //we only need +-1 - use the most efficient type
 
 class DestructibleTile;
@@ -29,7 +28,7 @@ protected:
 public:
 	constexpr static int MultiplierX = 2;
 	constexpr static int MultiplierY = 2;
-	constexpr static int shiftX = 256 + 128;
+	constexpr static int shiftX =  12 * 64;
 	constexpr static int shiftY = 64;
 	constexpr static int sizeX = MultiplierX * 64;
 	constexpr static  int sizeY = MultiplierY * 32;//TODO
@@ -75,10 +74,9 @@ public:
 	LevelData(const std::string& mapFilename);
 	static constexpr  int sizeX = 12;
 	static constexpr  int sizeY = 12;
-	//static constexpr int maxTeleporters = 6;
 	tilePtr map[sizeX][sizeY];
 	/// <summary>
-	/// Players should always be at pos 0 he will always die last so we dont move whole vector
+	/// Holds non-player sprites
 	/// </summary>
 	std::vector<spritePtr> Sprites;
 	/// <summary>
@@ -92,18 +90,21 @@ public:
 class GameData
 {
 public:
-	static constexpr int LevelCount = 1;
+	static constexpr int LevelCount = 2;
 	static int currentLevel;
 	static std::string Levels[];
 	static std::unique_ptr<LevelData> levelData;
 	inline static GameState state = GameState::Playing;
 	inline static bool PlayerTurn = true;
+	
 	//This allows everyone to read player data, modifying them should be done inside player class
 	//Noncost usage requires explicit cast - consider effects
 	static const Player* GetPlayer()
 	{
 		return player;
 	}
+	static void LoadNextLevel();
+	static void RestartLevel();
 	static void ResetPlayer(int X, int Y);
 private:
 	static Player* player;
@@ -355,9 +356,12 @@ public:
 	}
 	bool MakeMove() override
 	{
+		if (!Alive) { return true; } //not active anymore
 		TurnToPlayer(GameData::GetPlayer()); //we need to change orientation and then do the same thing as defined in BaseSprite so we call base method
 		//no need to check for bound we always go towards player which is inside the level
 		bool retval = BaseSprite::MakeMove();
+
+		//TODO check for collisions with other enemies
 		if (X == GameData::GetPlayer()->GetX() && Y == GameData::GetPlayer()->GetY())
 		{
 			GameData::state = GameState::Lost;
@@ -434,7 +438,14 @@ public:
 		if (dynamic_cast<Player*>(sprite) != nullptr) //child of player entered - win
 		{
 			GameData::levelData->End = true;
-			GameData::state = GameState::Won;
+			if (GameData::currentLevel == GameData::LevelCount)
+			{
+				GameData::state = GameState::Finished;
+			}
+			else
+			{
+				GameData::state = GameState::BetweenLevels;
+			}
 		}
 	}
 };
