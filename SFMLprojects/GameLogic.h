@@ -10,7 +10,7 @@
 #include <filesystem>
 
 
-enum class GameState { Menu, Playing, Lost, Finished, BetweenLevels, Rules  };
+enum class GameState { Menu, Playing, Lost, Victory, BetweenLevels, Rules, Credits  };
 using Direction = std::pair<int_fast8_t, int_fast8_t>; //we only need +-1 - use the most efficient type
 
 class DestructibleTile;
@@ -87,6 +87,7 @@ public:
 	bool End = false;
 };
 
+enum class UI_Images{ Menu, Rules, BetweenLevels, Victory, Keyboard, Lost, Credits, Count  };
 class GameData
 {
 public:
@@ -94,9 +95,28 @@ public:
 	static int currentLevel;
 	static std::string Levels[];
 	static std::unique_ptr<LevelData> levelData;
-	inline static GameState state = GameState::Playing;
+	inline static GameState state = GameState::Menu;
 	inline static bool PlayerTurn = true;
-	
+	static sf::Sprite ImageSprite;
+	static  constexpr int DefaultSizeX = 1600;
+	static  constexpr int DefaultSizeY = 900;
+	static void LoadImages();
+	inline  static const std::string AssetsPath = "..\\Assets\\";
+	//Images for UI
+	static  sf::Texture UI_Images_[(int)UI_Images::Count];
+
+	static std::string UI_Img_Files[(int)UI_Images::Count];
+	//hack that makes sure size is always the same as Screen count
+
+	static void ShowImage()
+	{
+		window.clear(sf::Color::Black);
+		ImageSprite.setTexture(UI_Images_[(int)image]);
+		ImageSprite.setTextureRect(sf::IntRect(0,0,1600,900));
+		ImageSprite.setPosition(0, 0);
+		window.draw(ImageSprite);
+		window.display();
+	}
 	//This allows everyone to read player data, modifying them should be done inside player class
 	//Noncost usage requires explicit cast - consider effects
 	static const Player* GetPlayer()
@@ -106,8 +126,26 @@ public:
 	static void LoadNextLevel();
 	static void RestartLevel();
 	static void ResetPlayer(int X, int Y);
+	static void SetImage(UI_Images image_)
+	{
+		image = image_;
+		ShowImage();
+	}
+
+	//Game state processing
+
+	static void MainLoop();
+	static void Menu();
+	static void Playing();
+	static void BetweenLevels();
+	static void Victory();
+	static void Lost();
+	static void CreditsRules();
 private:
+	//static tilePtr map[LevelData::sizeX][LevelData::sizeY]; //map = levelData->map; wont work
+	static UI_Images image; //holds the enum value of image to be shown, used to process rules and credits in one function
 	static Player* player;
+	static sf::RenderWindow window;
 };
 /*/
 std::string GameData::Levels[] =
@@ -311,9 +349,12 @@ public:
 	void Render(sf::RenderWindow& window) const override
 	{
 		PlayerSprite.setPosition(BaseTile::shiftX + (X - Y) * (BaseTile::sizeX / 2.0f), (BaseTile::sizeY / 2.0f) * (X + Y - 2) + BaseTile::shiftY);
-		
-
+		if(freeze > 0)
+		{
+			PlayerSprite.setColor(sf::Color(192, 192, 255, 255)); //make frozen character blueish
+		}
 		window.draw(PlayerSprite);
+		PlayerSprite.setColor(sf::Color(255, 255, 255, 255));
 	}
 	//make move doesnt need override
 	bool MakeMove() override
@@ -350,9 +391,12 @@ public:
 	{
 		if (!Alive) { return; }
 		EnemySprite.setPosition(BaseTile::shiftX + (X - Y) * (BaseTile::sizeX / 2.0f), (BaseTile::sizeY / 2.0f) * (X + Y - 2) + BaseTile::shiftY);
-
-
+		if (freeze > 0)
+		{
+			EnemySprite.setColor(sf::Color(192, 192, 255, 255)); //make frozen character blueish
+		}
 		window.draw(EnemySprite);
+		EnemySprite.setColor(sf::Color(255, 255, 255, 255));
 	}
 	bool MakeMove() override
 	{
@@ -365,6 +409,8 @@ public:
 		if (X == GameData::GetPlayer()->GetX() && Y == GameData::GetPlayer()->GetY())
 		{
 			GameData::state = GameState::Lost;
+			GameData::SetImage(UI_Images::Lost);
+			GameData::ShowImage();
 		}
 		return retval;
 	}
@@ -440,11 +486,15 @@ public:
 			GameData::levelData->End = true;
 			if (GameData::currentLevel == GameData::LevelCount)
 			{
-				GameData::state = GameState::Finished;
+				GameData::state = GameState::Victory;
+				GameData::SetImage(UI_Images::Victory);
+				GameData::ShowImage(); //we need to make sure rendering scene doesnt overwrite this
 			}
 			else
 			{
 				GameData::state = GameState::BetweenLevels;
+				GameData::SetImage(UI_Images::BetweenLevels);
+				GameData::ShowImage();
 			}
 		}
 	}
