@@ -43,9 +43,7 @@ public:
 	/// </summary>
 	virtual void Render(sf::RenderWindow& window)
 	{
-		//GroundSprite.setPosition(sizeX * (X/2) + shift - sizeX * 0.5 * (X % 2), sizeY * (Y / 2) + shift + sizeY * 0.5 * (Y % 2)); //shift makes sure the sprite doesnt sit right on edge
 		GroundSprite.setPosition(shiftX +(X-Y)*(sizeX/ 2.0f), (sizeY/2.0f) * (X+Y) + shiftY); //shift makes sure the sprite doesnt sit right on edge
-		//int division y/2 is intended - half move happens in odd number Y/2 stays same
 		window.draw(GroundSprite);
 	}
 	virtual void SetTexture(const sf::Texture& texture)
@@ -107,7 +105,10 @@ public:
 
 	static std::string UI_Img_Files[(int)UI_Images::Count];
 	//hack that makes sure size is always the same as Screen count
-
+	static void SetVsync(bool value)
+	{
+		window.setVerticalSyncEnabled(value);
+	}
 	static void ShowImage()
 	{
 		window.clear(sf::Color::Black);
@@ -314,6 +315,8 @@ public:
 	void Die() override //end the game
 	{
 		GameData::state = GameState::Lost;
+		GameData::SetImage(UI_Images::Lost);
+		GameData::ShowImage();
 	}
 	void Reset(int x, int y)
 	{
@@ -372,7 +375,7 @@ class Enemy : public BaseSprite
 //Chases player who loses on contact with this, Unlike player can move to ALL neighbouring tiles(sharing vertex is enough)
 {
 protected:
-	virtual void TurnToPlayer(const BaseSprite* player); //TODO solve how to fetch player pos(GameData::levelData->Sprites[0]->GetX() seems to complicated)
+	virtual void TurnToPlayer(const BaseSprite* player);
 	
 public:
 	Enemy(int x, int y)
@@ -402,7 +405,7 @@ public:
 	{
 		if (!Alive) { return true; } //not active anymore
 		TurnToPlayer(GameData::GetPlayer()); //we need to change orientation and then do the same thing as defined in BaseSprite so we call base method
-		//no need to check for bound we always go towards player which is inside the level
+		//no need to check for bounds we always go towards player which is inside the level
 		bool retval = BaseSprite::MakeMove();
 
 		//TODO check for collisions with other enemies
@@ -419,8 +422,8 @@ public:
 static inline void InitializePlayerData()
 {
 	auto path = absolute(std::filesystem::relative(BaseSprite::relativePath));
-	if (!Player::PlayerTexture.loadFromFile(path.string() + "\\blocks_11.png")
-		|| !Enemy::EnemyTexture.loadFromFile(path.string() + "\\blocks_20.png"))
+	if (!Player::PlayerTexture.loadFromFile(path.string() + "\\..\\PlayerSprite.png")
+		|| !Enemy::EnemyTexture.loadFromFile(path.string() + "\\..\\EvilRobot.png"))
 	{
 		throw std::exception("Cant load file");
 	}
@@ -428,8 +431,10 @@ static inline void InitializePlayerData()
 	sf::Sprite enemySprite;
 	playerSprite.setTexture(Player::PlayerTexture);
 	enemySprite.setTexture(Enemy::EnemyTexture);
-	playerSprite.setScale(BaseTile::MultiplierX, BaseTile::MultiplierY); //sprites should be scaled the same as tiles
-	enemySprite.setScale(BaseTile::MultiplierX, BaseTile::MultiplierY);
+	playerSprite.setScale(BaseTile::MultiplierX / 2.0f, BaseTile::MultiplierY / 2.0f); //sprites should be scaled the same as tiles
+	enemySprite.setScale(BaseTile::MultiplierX / 2.0f, BaseTile::MultiplierY / 2.0f); //robot is already scaled
+	enemySprite.setOrigin(-37, 55 - BaseTile::sizeY);
+	playerSprite.setOrigin(-37, -18);
 	Player::PlayerSprite = playerSprite;
 	Enemy::EnemySprite = enemySprite;
 }

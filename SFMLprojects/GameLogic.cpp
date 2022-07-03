@@ -448,6 +448,10 @@ void GameData::Playing()
             //window.display(); //Debug only
         }
     }
+    ImageSprite.setTexture(UI_Images_[(int)UI_Images::Keyboard]);
+    ImageSprite.setPosition(50, 750);
+    window.draw(ImageSprite);
+    ImageSprite.setPosition(0, 0);
     for (auto&& item : levelData->Sprites)
     {
         item->Render(window);
