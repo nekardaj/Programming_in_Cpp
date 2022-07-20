@@ -19,7 +19,7 @@ sf::Sprite BaseTile::GroundSprite = sf::Sprite();
 
 int GameData::currentLevel = 0;
 std::string BaseTile::relativePath = "..\\Assets\\Blocks\\";
-std::string BaseSprite::relativePath = "..\\Assets\\Blocks\\";
+std::string BaseSprite::relativePath = "..\\Assets\\";
 sf::Texture BaseTile::Texture_ = sf::Texture();
 sf::Sprite Player::PlayerSprite = sf::Sprite();
 sf::Texture Player::PlayerTexture = sf::Texture();
@@ -215,6 +215,8 @@ void GameData::MainLoop()
         case GameState::Credits: //we want same behaviour as in rules just different image - set image and fall to case with same behaviour
         {
             image = UI_Images::Credits;
+            CreditsRules();
+            break;
         }
         case GameState::Rules:
         {

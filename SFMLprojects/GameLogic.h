@@ -31,10 +31,7 @@ public:
 	constexpr static int shiftX =  12 * 64;
 	constexpr static int shiftY = 64;
 	constexpr static int sizeX = MultiplierX * 64;
-	constexpr static  int sizeY = MultiplierY * 32;//TODO
-
-	constexpr static int midTileX = 191;
-	constexpr static int midTileY = 728;
+	constexpr static  int sizeY = MultiplierY * 32;
 	static std::string relativePath;
 	static sf::Sprite GroundSprite; //breakable tiles need to change, we can use one sprite for each type as changes happend rarely
 	static sf::Texture Texture_;
@@ -82,7 +79,6 @@ public:
 	/// </summary>
 	/// <returns>returns true on success, false otherwise</returns>
 	bool LoadMap(const std::string& filename); //Initialize grid drawing with size
-	bool End = false;
 };
 
 enum class UI_Images{ Menu, Rules, BetweenLevels, Victory, Keyboard, Lost, Credits, Count  };
@@ -91,7 +87,6 @@ class GameData
 public:
 	static constexpr int LevelCount = 2;
 	static int currentLevel;
-	static std::string Levels[];
 	static std::unique_ptr<LevelData> levelData;
 	inline static GameState state = GameState::Menu;
 	inline static bool PlayerTurn = true;
@@ -148,14 +143,6 @@ private:
 	static Player* player;
 	static sf::RenderWindow window;
 };
-/*/
-std::string GameData::Levels[] =
-{
-		"level01.txt"
-};
-*/
-//int GameData::currentLevel = 1;
-//these values need to be initialized
 
 
 
@@ -169,6 +156,7 @@ protected:
 	Direction Direction_ = std::make_pair(0, 0);
 
 public:
+	BaseSprite(int x, int y) : X(x), Y(y) { }
 	static std::string relativePath;
 	int GetX() const { return X; }
 	int GetY() const { return Y; }
@@ -305,11 +293,7 @@ public:
 class Player : public BaseSprite
 {
 public:
-	Player(int x, int y)
-	{
-		X = x;
-		Y = y;
-	}
+	Player(int x, int y) : BaseSprite(x,y){	}
 	static sf::Sprite PlayerSprite;
 	static sf::Texture PlayerTexture;
 	void Die() override //end the game
@@ -378,11 +362,7 @@ protected:
 	virtual void TurnToPlayer(const BaseSprite* player);
 	
 public:
-	Enemy(int x, int y)
-	{
-		X = x;
-		Y = y;
-	}
+	Enemy(int x, int y) : BaseSprite(x,y){	}
 	static sf::Sprite EnemySprite;
 	static sf::Texture EnemyTexture;
 	void Die() override //end the game
@@ -422,8 +402,8 @@ public:
 static inline void InitializePlayerData()
 {
 	auto path = absolute(std::filesystem::relative(BaseSprite::relativePath));
-	if (!Player::PlayerTexture.loadFromFile(path.string() + "\\..\\PlayerSprite.png")
-		|| !Enemy::EnemyTexture.loadFromFile(path.string() + "\\..\\EvilRobot.png"))
+	if (!Player::PlayerTexture.loadFromFile(path.string() + "\\PlayerSprite.png")
+		|| !Enemy::EnemyTexture.loadFromFile(path.string() + "\\EvilRobot.png"))
 	{
 		throw std::exception("Cant load file");
 	}
@@ -488,7 +468,6 @@ public:
 		//this check will be performed only few times per whole game overhead is unsignificant
 		if (dynamic_cast<Player*>(sprite) != nullptr) //child of player entered - win
 		{
-			GameData::levelData->End = true;
 			if (GameData::currentLevel == GameData::LevelCount)
 			{
 				GameData::state = GameState::Victory;

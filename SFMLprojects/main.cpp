@@ -15,7 +15,8 @@ int main()
         music.play();
         music.setLoop(true); //play bg music on loop
     }
-    
+
+
     GameData::SetVsync(true); //makes sure rendering happens when needed
     GameData::MainLoop();
 
