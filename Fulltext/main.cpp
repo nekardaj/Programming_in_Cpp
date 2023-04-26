@@ -8,23 +8,21 @@ int main(int argc, char** argv)
     /**/
 	if(argc > 3 || argc < 2)
 	{
-	    cout << "Arguments error" << endl;
+	    //cout << "Arguments error" << endl;
 	    return 0;
 	}
 	/**/
     ifstream articles;
     ifstream queries;
-    try
+
+    articles.open(argv[1]);
+    if (argc == 3)
     {
-        articles.open(argv[1]);
-        if (argc == 3)
-        {
-            queries.open(argv[2]);
-        }
+        queries.open(argv[2]);
     }
-    catch (exception)
+    if(!articles.good())
     {
-        return 0; //program cannot continue
+	    return 0;
     }
 
     ArticleProcessor processor;

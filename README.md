@@ -1,3 +1,3 @@
-# Replace this with your name
+# Programming in C++
 
-Describe your project(s) here.
+repository for Programming in C++ course at MFF UK.
